@@ -476,6 +476,66 @@ html, body {
   opacity: 1;
 }
 
+/* Swipe hint — appears briefly on first load of any slide section,
+   fades after 3 seconds. Positioned just above the counter. */
+.swipe-hint {
+  position: absolute;
+  bottom: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink-overlay);
+  border: 1px solid rgba(232, 200, 115, 0.4);
+  color: var(--gold);
+  padding: 6px 18px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.swipe-hint.is-visible {
+  opacity: 1;
+}
+
+/* Mute hint — message bubble style, appears near the top-right below
+   the nav bar for 4 seconds, pointing up toward the mute button. */
+.mute-hint {
+  position: absolute;
+  top: 60px;
+  right: 12px;
+  max-width: 200px;
+  background: rgba(20, 16, 10, 0.85);
+  border: 1px solid rgba(232, 200, 115, 0.5);
+  color: var(--cream);
+  padding: 8px 12px;
+  border-radius: 8px 2px 8px 8px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: 40;
+}
+
+.mute-hint::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  right: 10px;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 8px solid rgba(232, 200, 115, 0.5);
+}
+
+.mute-hint.is-visible {
+  opacity: 1;
+}
+
 /* On touch devices, hide the desktop arrow buttons — swiping is
    the natural gesture there and the arrows would just be visual
    clutter on top of the image. */

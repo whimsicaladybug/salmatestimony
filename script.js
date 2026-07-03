@@ -186,12 +186,21 @@ function render() {
       renderHomepage(lang);
   }
 
-  // Music plays on homepage/menus (browsing) and pauses on content
-  // sections (reading) — see the BACKGROUND MUSIC block above.
+  // Music: always plays on homepage/menus, always mutes on content
+  // sections (slides + My Story) so people can read in peace.
+  // This is an automatic override on every navigation — manual mute
+  // still works during a section, but resets as soon as they go back
+  // to a menu. Entering any section always mutes, always.
   if (route.page === "section") {
-    pauseMusicForReading();
+    bgMusic.pause();
+    // Update the speaker icon to reflect the muted state
+    const btn = document.querySelector(".music-toggle");
+    if (btn) btn.innerHTML = "&#128263;";
   } else {
     playMusicIfAllowed();
+    // Update the speaker icon to reflect the playing state
+    const btn = document.querySelector(".music-toggle");
+    if (btn) btn.innerHTML = "&#128266;";
   }
 
   window.scrollTo(0, 0);
@@ -354,6 +363,11 @@ function renderSection(lang, sectionId) {
     const prevLabel = lang === "en" ? "Previous slide" : "Slide sebelumnya";
     const nextLabel = lang === "en" ? "Next slide" : "Slide berikutnya";
 
+    const swipeHintText = lang === "en" ? "swipe ›››" : "geser ›››";
+    const muteHintText = lang === "en"
+      ? "🔇 Mute if you want to read silently"
+      : "🔇 Matikan musik jika ingin membaca dengan tenang";
+
     APP.innerHTML = `
       <div class="page page-text">
         ${navBarHTML(lang, { backLinks })}
@@ -364,6 +378,8 @@ function renderSection(lang, sectionId) {
           <button class="carousel-arrow carousel-arrow-prev" aria-label="${prevLabel}">&#10094;</button>
           <button class="carousel-arrow carousel-arrow-next" aria-label="${nextLabel}">&#10095;</button>
           <div class="carousel-counter" id="carousel-counter"><span id="carousel-current">1</span> / ${count}</div>
+          <div class="swipe-hint" id="swipe-hint">${swipeHintText}</div>
+          <div class="mute-hint" id="mute-hint">${muteHintText}</div>
         </div>
       </div>
     `;
@@ -385,7 +401,21 @@ function initCarousel(totalSlides, sectionId) {
   const track = document.getElementById("carousel-track");
   const counterEl = document.getElementById("carousel-counter");
   const counterNum = document.getElementById("carousel-current");
+  const swipeHint = document.getElementById("swipe-hint");
+  const muteHint = document.getElementById("mute-hint");
   if (!track) return;
+
+  // --- Auto-hide swipe hint after 3 seconds ---
+  if (swipeHint) {
+    swipeHint.classList.add("is-visible");
+    setTimeout(() => swipeHint.classList.remove("is-visible"), 3000);
+  }
+
+  // --- Auto-hide mute hint after 4 seconds ---
+  if (muteHint) {
+    muteHint.classList.add("is-visible");
+    setTimeout(() => muteHint.classList.remove("is-visible"), 4000);
+  }
 
   let hideTimer = null;
 
@@ -395,21 +425,16 @@ function initCarousel(totalSlides, sectionId) {
     if (hideTimer) clearTimeout(hideTimer);
     hideTimer = setTimeout(() => {
       counterEl.classList.remove("is-visible");
-    }, 3000); // stays visible 3s after the most recent slide change, then fades
+    }, 3000);
   }
 
   function currentIndex() {
-    const slideWidth = track.clientWidth;
-    return Math.round(track.scrollLeft / slideWidth);
+    return Math.round(track.scrollLeft / track.clientWidth);
   }
 
   function goToSlide(index, instant) {
     const clamped = Math.max(0, Math.min(totalSlides - 1, index));
     if (instant) {
-      // CSS scroll-behavior:smooth (set on .carousel-track) affects
-      // even direct scrollLeft assignments in modern browsers, not
-      // just scrollTo() calls — so we briefly turn it off, jump, then
-      // restore it, guaranteeing truly zero animation for this case.
       const previousBehavior = track.style.scrollBehavior;
       track.style.scrollBehavior = "auto";
       track.scrollLeft = clamped * track.clientWidth;
@@ -420,10 +445,55 @@ function initCarousel(totalSlides, sectionId) {
     slidePositionMemory[sectionId] = clamped;
   }
 
-  // Update counter as the person scrolls/swipes (debounced via rAF
-  // so it doesn't fire excessively during the scroll animation), and
-  // briefly reveal it each time the slide changes. Also remembers the
-  // position so a language switch can restore it afterward.
+  // --- Fix rough swiping ---
+  // The problem: CSS scroll-snap alone lets even a gentle flick jump
+  // multiple slides because momentum scrolling carries the scroll past
+  // the next snap point. Solution: intercept touch events manually,
+  // measure actual swipe distance/velocity, and only advance ONE slide
+  // per gesture regardless of speed. This mirrors how Instagram works.
+  let touchStartX = 0;
+  let touchStartTime = 0;
+  let isSwiping = false;
+  const MIN_SWIPE_DISTANCE = 40; // px — ignore accidental micro-swipes
+
+  track.addEventListener("touchstart", (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartTime = Date.now();
+    isSwiping = true;
+    // Lock scroll-snap during the gesture so we control the outcome
+    track.style.overflowX = "hidden";
+  }, { passive: true });
+
+  track.addEventListener("touchmove", (e) => {
+    // Don't call preventDefault (passive listener) but track position
+  }, { passive: true });
+
+  track.addEventListener("touchend", (e) => {
+    if (!isSwiping) return;
+    isSwiping = false;
+
+    const deltaX = touchStartX - e.changedTouches[0].clientX;
+    const elapsed = Date.now() - touchStartTime;
+
+    // Re-enable overflow first so goToSlide can scroll
+    track.style.overflowX = "auto";
+
+    if (Math.abs(deltaX) < MIN_SWIPE_DISTANCE) {
+      // Too short — snap back to current slide without advancing
+      goToSlide(currentIndex(), true);
+      return;
+    }
+
+    // Always advance exactly ONE slide regardless of swipe speed
+    if (deltaX > 0) {
+      goToSlide(currentIndex() + 1);
+    } else {
+      goToSlide(currentIndex() - 1);
+    }
+    flashCounter();
+  }, { passive: true });
+
+  // Scroll event: keep counter in sync (covers arrow clicks + keyboard)
   let ticking = false;
   let lastShownIndex = 0;
   track.addEventListener("scroll", () => {
@@ -447,27 +517,21 @@ function initCarousel(totalSlides, sectionId) {
   if (prevBtn) prevBtn.addEventListener("click", () => { goToSlide(currentIndex() - 1); flashCounter(); });
   if (nextBtn) nextBtn.addEventListener("click", () => { goToSlide(currentIndex() + 1); flashCounter(); });
 
-  // Keyboard arrows (when the carousel itself has focus)
+  // Keyboard arrows
   track.addEventListener("keydown", (e) => {
     if (e.key === "ArrowRight") { goToSlide(currentIndex() + 1); flashCounter(); e.preventDefault(); }
     if (e.key === "ArrowLeft") { goToSlide(currentIndex() - 1); flashCounter(); e.preventDefault(); }
   });
 
-  // Restore remembered position (e.g. after a language switch) —
-  // jump instantly rather than animating, since visibly sliding back
-  // to where you were looks like a glitch rather than a feature.
+  // Restore remembered position after language switch
   const rememberedIndex = slidePositionMemory[sectionId];
   if (rememberedIndex && rememberedIndex > 0 && rememberedIndex < totalSlides) {
-    // Wait one frame so the browser has laid out the new slides
-    // (and therefore has a correct track.clientWidth) before we
-    // try to scroll to a specific position.
     requestAnimationFrame(() => {
       goToSlide(rememberedIndex, true);
       counterNum.textContent = rememberedIndex + 1;
     });
   }
 
-  // Show it briefly on initial load too, so people know it's there
   flashCounter();
 }
 
