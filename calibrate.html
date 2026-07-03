@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Hotspot Calibration Tool</title>
+<style>
+  body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: #222;
+    color: #eee;
+  }
+  #instructions {
+    padding: 16px 20px;
+    background: #111;
+    border-bottom: 2px solid #e8c873;
+  }
+  #instructions h2 { margin: 0 0 8px; color: #e8c873; }
+  #instructions p { margin: 4px 0; font-size: 0.95rem; }
+  #instructions code {
+    background: #333;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #9f9;
+  }
+  #stage {
+    position: relative;
+    max-width: 700px;
+    margin: 20px auto;
+  }
+  #stage img {
+    display: block;
+    width: 100%;
+  }
+  .marker {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: red;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .box-preview {
+    position: absolute;
+    border: 2px solid lime;
+    background: rgba(0, 255, 0, 0.15);
+    pointer-events: none;
+  }
+  #output {
+    max-width: 700px;
+    margin: 0 auto 40px;
+    padding: 16px 20px;
+    background: #111;
+    border: 1px solid #444;
+    white-space: pre-wrap;
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: #9f9;
+  }
+  #controls {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 10px 20px;
+  }
+  button {
+    background: #e8c873;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    margin-right: 8px;
+  }
+  select, input {
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid #555;
+    background: #333;
+    color: #eee;
+  }
+</style>
+</head>
+<body>
+
+<div id="instructions">
+  <h2>🎯 Hotspot Calibration Tool</h2>
+  <p>1. Edit the line below in this file to point at your real image: <code>const IMAGE_PATH = "assets/images/menu-en.png";</code></p>
+  <p>2. Click the TOP-LEFT corner of a card, then click its BOTTOM-RIGHT corner.</p>
+  <p>3. A green box will appear showing exactly what you selected. Repeat for each card.</p>
+  <p>4. Copy the generated CSS at the bottom and send it back.</p>
+</div>
+
+<div id="controls">
+  <label>Naming this box: </label>
+  <input type="text" id="box-name" placeholder="e.g. menu-hotspot-final" value="menu-hotspot-final" />
+  <button id="reset-btn">Clear All Boxes</button>
+</div>
+
+<div id="stage">
+  <img id="target-image" src="assets/images/menu-en.png" alt="Calibration target" />
+</div>
+
+<div id="output">Click two corners on the image above to generate a CSS box...</div>
+
+<script>
+  const IMAGE_PATH = "assets/images/scripture-en.png"; // <-- change this to test other pages (menu, jesus-menu, scripture-menu, homepage)
+  document.getElementById("target-image").src = IMAGE_PATH;
+
+  const stage = document.getElementById("stage");
+  const img = document.getElementById("target-image");
+  const output = document.getElementById("output");
+  const nameInput = document.getElementById("box-name");
+
+  let firstClick = null;
+  let allBoxesCSS = [];
+
+  stage.addEventListener("click", (e) => {
+    const rect = img.getBoundingClientRect();
+    const xPct = ((e.clientX - rect.left) / rect.width) * 100;
+    const yPct = ((e.clientY - rect.top) / rect.height) * 100;
+
+    // Drop a small red marker dot wherever clicked
+    const marker = document.createElement("div");
+    marker.className = "marker";
+    marker.style.left = xPct + "%";
+    marker.style.top = yPct + "%";
+    stage.appendChild(marker);
+
+    if (!firstClick) {
+      firstClick = { x: xPct, y: yPct };
+      output.textContent = `First corner set at top:${yPct.toFixed(1)}%, left:${xPct.toFixed(1)}%.\nNow click the BOTTOM-RIGHT corner of the same card.`;
+    } else {
+      const top = Math.min(firstClick.y, yPct);
+      const left = Math.min(firstClick.x, xPct);
+      const height = Math.abs(yPct - firstClick.y);
+      const width = Math.abs(xPct - firstClick.x);
+
+      // Draw the green preview box
+      const box = document.createElement("div");
+      box.className = "box-preview";
+      box.style.top = top + "%";
+      box.style.left = left + "%";
+      box.style.width = width + "%";
+      box.style.height = height + "%";
+      stage.appendChild(box);
+
+      const name = nameInput.value.trim() || "unnamed-hotspot";
+      const cssLine = `.${name} { top: ${top.toFixed(1)}%; left: ${left.toFixed(1)}%; width: ${width.toFixed(1)}%; height: ${height.toFixed(1)}%; }`;
+      allBoxesCSS.push(cssLine);
+      output.textContent = allBoxesCSS.join("\n");
+
+      firstClick = null;
+    }
+  });
+
+  document.getElementById("reset-btn").addEventListener("click", () => {
+    document.querySelectorAll(".marker, .box-preview").forEach(el => el.remove());
+    allBoxesCSS = [];
+    firstClick = null;
+    output.textContent = "Cleared. Click two corners on the image above to generate a CSS box...";
+  });
+</script>
+
+</body>
+</html>
