@@ -501,35 +501,45 @@ html, body {
   opacity: 1;
 }
 
-/* Mute hint — message bubble style, appears near the top-right below
-   the nav bar for 4 seconds, pointing up toward the mute button. */
+/* Wrapper around the music button so we can position the hint below it */
+.music-btn-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Mute hint — message bubble that appears directly under the speaker
+   icon, pointing up toward it. Shows for 4 seconds on section entry. */
 .mute-hint {
   position: absolute;
-  top: 60px;
-  right: 12px;
-  max-width: 200px;
-  background: rgba(20, 16, 10, 0.85);
+  top: calc(100% + 10px);
+  right: 0;
+  width: 160px;
+  background: rgba(20, 16, 10, 0.92);
   border: 1px solid rgba(232, 200, 115, 0.5);
   color: var(--cream);
-  padding: 8px 12px;
-  border-radius: 8px 2px 8px 8px;
-  font-size: 0.8rem;
+  padding: 7px 10px;
+  border-radius: 8px 8px 8px 2px;
+  font-size: 0.75rem;
   line-height: 1.4;
-  backdrop-filter: blur(6px);
+  text-align: center;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.4s ease;
-  z-index: 40;
+  z-index: 60;
+  white-space: normal;
 }
 
+/* Triangle pointing up toward the speaker icon */
 .mute-hint::before {
   content: '';
   position: absolute;
-  top: -8px;
-  right: 10px;
-  border-left: 7px solid transparent;
-  border-right: 7px solid transparent;
-  border-bottom: 8px solid rgba(232, 200, 115, 0.5);
+  top: -7px;
+  right: 8px;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 7px solid rgba(232, 200, 115, 0.5);
 }
 
 .mute-hint.is-visible {

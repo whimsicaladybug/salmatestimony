@@ -186,22 +186,16 @@ function render() {
       renderHomepage(lang);
   }
 
-  // Music: always plays on homepage/menus, always mutes on content
-  // sections (slides + My Story) so people can read in peace.
-  // This is an automatic override on every navigation — manual mute
-  // still works during a section, but resets as soon as they go back
-  // to a menu. Entering any section always mutes, always.
-  if (route.page === "section") {
-    bgMusic.pause();
-    // Update the speaker icon to reflect the muted state
-    const btn = document.querySelector(".music-toggle");
-    if (btn) btn.innerHTML = "&#128263;";
-  } else {
+  // Music behavior:
+  // - Menus/homepage: always resume automatically
+  // - Sections: keep playing (no auto-mute). If user manually mutes
+  //   during a section, that mute persists to other sections too.
+  //   But returning to a menu always resumes music.
+  if (route.page !== "section") {
     playMusicIfAllowed();
-    // Update the speaker icon to reflect the playing state
-    const btn = document.querySelector(".music-toggle");
-    if (btn) btn.innerHTML = "&#128266;";
   }
+  // Always re-render the nav bar speaker icon to reflect current state
+  // (it gets rebuilt on every render anyway via navBarHTML)
 
   window.scrollTo(0, 0);
 }
@@ -341,13 +335,19 @@ function renderSection(lang, sectionId) {
   if (section.type === "story") {
     APP.innerHTML = `
       <div class="page page-text page-story">
-        ${navBarHTML(lang, { backLinks })}
+        ${navBarHTML(lang, { backLinks, showMuteHint: true })}
         <article class="content-stage story-content">
           <h1 class="section-title">${section.title[lang]}</h1>
           ${section.html[lang]}
         </article>
       </div>
     `;
+    // Auto-hide mute hint after 4 seconds
+    const muteHint = document.getElementById("mute-hint");
+    if (muteHint) {
+      muteHint.classList.add("is-visible");
+      setTimeout(() => muteHint.classList.remove("is-visible"), 4000);
+    }
   } else {
     const folder = section.folder[lang];
     const count = section.slideCount[lang];
@@ -364,13 +364,10 @@ function renderSection(lang, sectionId) {
     const nextLabel = lang === "en" ? "Next slide" : "Slide berikutnya";
 
     const swipeHintText = lang === "en" ? "swipe ›››" : "geser ›››";
-    const muteHintText = lang === "en"
-      ? "🔇 Mute if you want to read silently"
-      : "🔇 Matikan musik jika ingin membaca dengan tenang";
 
     APP.innerHTML = `
       <div class="page page-text">
-        ${navBarHTML(lang, { backLinks })}
+        ${navBarHTML(lang, { backLinks, showMuteHint: true })}
         <div class="carousel-wrapper">
           <div class="carousel-track" id="carousel-track" tabindex="0">
             ${slidesHTML}
@@ -379,7 +376,6 @@ function renderSection(lang, sectionId) {
           <button class="carousel-arrow carousel-arrow-next" aria-label="${nextLabel}">&#10095;</button>
           <div class="carousel-counter" id="carousel-counter"><span id="carousel-current">1</span> / ${count}</div>
           <div class="swipe-hint" id="swipe-hint">${swipeHintText}</div>
-          <div class="mute-hint" id="mute-hint">${muteHintText}</div>
         </div>
       </div>
     `;
@@ -402,16 +398,16 @@ function initCarousel(totalSlides, sectionId) {
   const counterEl = document.getElementById("carousel-counter");
   const counterNum = document.getElementById("carousel-current");
   const swipeHint = document.getElementById("swipe-hint");
-  const muteHint = document.getElementById("mute-hint");
   if (!track) return;
 
-  // --- Auto-hide swipe hint after 3 seconds ---
+  // Auto-hide swipe hint after 3 seconds
   if (swipeHint) {
     swipeHint.classList.add("is-visible");
     setTimeout(() => swipeHint.classList.remove("is-visible"), 3000);
   }
 
-  // --- Auto-hide mute hint after 4 seconds ---
+  // Auto-hide mute hint after 4 seconds (it lives in the nav bar)
+  const muteHint = document.getElementById("mute-hint");
   if (muteHint) {
     muteHint.classList.add("is-visible");
     setTimeout(() => muteHint.classList.remove("is-visible"), 4000);
@@ -543,13 +539,16 @@ function initCarousel(totalSlides, sectionId) {
    On content pages we pass 1 or 2 links: the immediate parent
    menu, and (if nested under Jesus/Scripture) also Main Menu.
    ---------------------------------------------------------- */
-function navBarHTML(lang, { backLinks } = {}) {
+function navBarHTML(lang, { backLinks, showMuteHint } = {}) {
   const links = backLinks && backLinks.length > 0
     ? backLinks.map(l => `<a href="${l.hash}" class="nav-back">${l.label}</a>`).join("")
     : `<a href="#/" class="nav-home">${lang === "en" ? "Home" : "Beranda"}</a>`;
 
   const muted = isMusicMuted();
   const musicLabel = lang === "en" ? (muted ? "Unmute music" : "Mute music") : (muted ? "Aktifkan musik" : "Matikan musik");
+  const muteHintText = lang === "en"
+    ? "🔇 Tap to mute while reading"
+    : "🔇 Ketuk untuk matikan musik";
 
   return `
     <header class="nav-bar">
@@ -557,9 +556,12 @@ function navBarHTML(lang, { backLinks } = {}) {
         ${links}
       </div>
       <div class="nav-right">
-        <button class="music-toggle" aria-label="${musicLabel}" title="${musicLabel}">
-          ${muted ? "&#128263;" : "&#128266;"}
-        </button>
+        <div class="music-btn-wrapper">
+          <button class="music-toggle" aria-label="${musicLabel}" title="${musicLabel}">
+            ${muted ? "&#128263;" : "&#128266;"}
+          </button>
+          ${showMuteHint ? `<div class="mute-hint" id="mute-hint">${muteHintText}</div>` : ""}
+        </div>
         <button class="lang-toggle" data-current="${lang}">
           <span class="${lang === "en" ? "lang-active" : ""}">EN</span>
           <span class="lang-divider">/</span>
