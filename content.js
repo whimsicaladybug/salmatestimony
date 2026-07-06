@@ -193,7 +193,7 @@ const SECTIONS = [
 
         <p>Bahkan setelah melihat semua ini, ada bagian dari diriku yang masih menolak. Aku memahami lebih banyak. Aku mempertanyakan lebih banyak. Tapi jauh di dalam diri, ada sesuatu yang masih menahan.</p>
         <p>Dan kemudian, suatu hari, sesuatu yang tidak terduga terjadi.</p>
-        <p>Aku pergi ke toko fotokopi untuk mengambil pesanan adikku. Itu hanya hari biasa — tidak ada yang istimewa, tidak ada yang direncanakan.</p>
+        <p>Aku pergi ke toko fotokopi untuk mengambil pesanan kakakku. Itu hanya hari biasa — tidak ada yang istimewa, tidak ada yang direncanakan.</p>
         <p>Tapi saat aku di sana, sesuatu menarik perhatianku. Ada pamflet besar yang dipajang, dan di bagian atasnya tertulis kalimat sederhana:</p>
         <blockquote class="story-quote">"God is not done with me yet."<br/><span style="font-size:0.9em;opacity:0.85;">("Tuhan belum selesai dengan hidupku.")</span></blockquote>
         <p>Di bawahnya, ada ayat Alkitab dari Yesaya 46:4:</p>
